@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 class FNNModel(nn.Module):
 
-    def __init__(self, vocab_size, embedding_dim, context_size, nhid):
+    def __init__(self, vocab_size, embedding_dim, context_size, nhid, tie_weights=False):
         super(FNNModel, self).__init__()
         self.context_size = context_size
         self.embedding_dim = embedding_dim
@@ -19,6 +19,12 @@ class FNNModel(nn.Module):
         # self.tanh = nn.Tanh()
         self.linear2 = nn.Linear(nhid, vocab_size+1)
         # self.decoder = nn.Linear(nhid, vocab_size)
+
+        # Tie weights: weight sharing between input and output layer
+        if tie_weights:
+            if nhid != embedding_dim:
+                raise ValueError('When using the tied flag, nhid must be equal to emsize')
+            self.linear2.weight = self.embeddings.weight
 
     def wrap_input(self, input):
         '''
