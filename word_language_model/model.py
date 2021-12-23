@@ -3,6 +3,83 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class FNNModel(nn.Module):
+
+    def __init__(self, vocab_size, embedding_dim, context_size, nhid):
+        super(FNNModel, self).__init__()
+        self.context_size = context_size
+        self.embedding_dim = embedding_dim
+        self.nhid = nhid
+        self.vocab_size = vocab_size
+        self.vocab_size1 = vocab_size + 1
+
+        self.embeddings = nn.Embedding(vocab_size+1, embedding_dim)
+        self.linear1 = nn.Linear(context_size * embedding_dim, nhid)
+        # nn.init.xavier_normal_(self.linear1.weight)
+        # self.tanh = nn.Tanh()
+        self.linear2 = nn.Linear(nhid, vocab_size+1)
+        # self.decoder = nn.Linear(nhid, vocab_size)
+
+    def wrap_input(self, input):
+        '''
+        Preprocess the input to fit the computation graph of FNNModel
+        e.g. input = [[1, 3], 
+                      [2, 4]]
+             wrapped_input = [
+                 [[<PAD>, 1], [<PAD>, 3], 
+                 [[1, 2]], [3, 4]]
+             ]
+        Arguments:
+            input: torch tensor with shape [seq_len, batch_size]
+        Returns:
+            wrapped_input: torch tensor with shape [seq_len, batch_size, model_seq_len]
+        '''
+        wrapped_input = []
+        batch_size = input.shape[1] # Num of col (dimensions)
+        context_size = input.shape[0] # Num of rows
+        # print("input size:", input.shape)
+
+        for idx in range(0, context_size):
+
+            if idx == self.context_size-1:
+                # The last time step needs no padding
+                wrapped_input.append(input)
+                continue
+
+            valid_tokens = input[0:idx+1, :]
+            padding = self.vocab_size * torch.ones([self.context_size - 1 - idx, batch_size], dtype=torch.int32).to(valid_tokens.device)
+            # print("padding shape", padding.shape)
+            # print("valid tokens", valid_tokens.shape)
+            padded_tokens = torch.cat([padding, valid_tokens], dim=0)
+            wrapped_input.append(padded_tokens)
+
+        wrapped_input = torch.stack(wrapped_input, dim=0)
+        wrapped_input = torch.transpose(wrapped_input, 1, 2)
+        return wrapped_input
+    
+    def forward(self, inputs):
+        # print("batch size:", inputs.shape[1])
+        # print("context_size:", inputs.shape[0])
+
+        wrapped_input = self.wrap_input(inputs)
+        # print("valid? ", wrapped_input.shape[2] == inputs.shape[0])
+
+        embeds = self.embeddings(wrapped_input)
+        # print("embeds", embeds.shape)
+        embeds = embeds.view(embeds.shape[0], embeds.shape[1], -1)
+        # print("embeds", embeds.shape)
+        # embeds = self.embeddings(inputs).view((1, -1))
+        # embeds = self.embeddings(inputs).view((-1, self.context_size * self.embedding_dim))
+        out = F.tanh(self.linear1(embeds))
+        out = self.linear2(out)
+        out = out.view(-1, self.vocab_size1)
+        log_probs = F.log_softmax(out, dim=1)
+        return log_probs
+
+    # def init_hidden(self, bsz):
+    #     weight = next(self.parameters())
+    #     return weight.new_zeros(2, bsz, self.nhid)
+
 class RNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
