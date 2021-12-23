@@ -1,3 +1,6 @@
+Created class FNN for language modeling. --bptt 8 for input argument for 8-gram model. <br>
+Colab link: https://colab.research.google.com/drive/1mjc74X4XLzaVMTxgPLcg0_hpzynV2JHx?usp=sharing
+
 # Word-level language modeling RNN
 
 This example trains a multi-layer RNN (Elman, GRU, or LSTM) on a language modeling task.
