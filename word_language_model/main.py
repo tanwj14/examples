@@ -165,7 +165,7 @@ def evaluate(data_source):
             elif args.model == 'FNN':
                 ntokens = ntokens + 1
                 output = model(data)
-                output = output.view(-1, ntokens)
+                # output = output.view(-1, ntokens)
             
             else:
                 output, hidden = model(data, hidden)
